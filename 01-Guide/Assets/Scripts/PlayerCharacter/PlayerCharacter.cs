@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Cinemachine;
 
 public class PlayerCharacter : MonoBehaviour
 {
@@ -16,6 +17,8 @@ public class PlayerCharacter : MonoBehaviour
     private GameObject commandObj;
 
     public PlayerCharacter_SO settings;
+    //[SerializeField] private CinemachineVirtualCamera playerMainCam;
+    [SerializeField] private Transform playerMainCam;
     #endregion
 
     //Health
@@ -32,6 +35,8 @@ public class PlayerCharacter : MonoBehaviour
     [SerializeField] private int attackPoint = 1;
     public int AttackPoint { get { return attackPoint; } }
 
+    //There should be a total dmg in order to 
+
     //Spirit
     [SerializeField] private int maxSP = 1;
     [SerializeField] private int currentSP;
@@ -41,6 +46,10 @@ public class PlayerCharacter : MonoBehaviour
         set { currentSP = value; }
     }
     [SerializeField] private float spRate;
+
+    //Stacking System
+    private int stackSP = 0;
+    public int StackSP { get { return stackSP; } }
 
     //Movement
     [SerializeField] private float charSpeed = 3f;
@@ -57,11 +66,11 @@ public class PlayerCharacter : MonoBehaviour
         commandObj = this.gameObject.transform.GetChild(1).gameObject;
         settings.hp = currentHP;
         settings.maxHp = maxHP;
-        settings.attackPoint = attackPoint;
+
+
         settings.playerPosition = gameObject.transform.position;
         settings.hasTeleport = false;
-
-        //commandObj.SetActive(false);
+        commandObj.SetActive(false);
     }
 
     void Start()
@@ -71,6 +80,10 @@ public class PlayerCharacter : MonoBehaviour
     private void Update()
     {
         //MovementBool(commandMode);
+        CommandSystem();
+        SpiritCharge();
+        StackingSpirit();
+
 
         if (settings.hasTeleport == true)
         {
@@ -81,14 +94,11 @@ public class PlayerCharacter : MonoBehaviour
         else
         {
             Movement();
-
             StopCoroutine(WaitForTeleportUpdate());
         }
-
         //Disable movement once position has been set
         //Did player teleport? if yes movement needs to wait for few seconds.
-        CommandSystem();
-        SpiritCharge();
+
 
 
 
@@ -120,6 +130,21 @@ public class PlayerCharacter : MonoBehaviour
         }
     }
 
+    public void StackingSpirit()
+    {
+        if (commandMode)
+        {
+            stackSP = Mathf.Clamp(stackSP, 0, currentSP - 1);
+            stackSP += Mathf.RoundToInt(Input.GetAxis("MouseScrollWheel"));
+            Debug.Log(stackSP);
+            settings.totalDmg = attackPoint + stackSP;
+        }
+        else
+        {
+            stackSP = 0;
+        }
+    }
+
 
     void OnControllerColliderHit(ControllerColliderHit hit)
     {
@@ -133,7 +158,17 @@ public class PlayerCharacter : MonoBehaviour
 
         if (Physics.Raycast(downray, out RaycastHit hit, Mathf.Infinity))
         {
+
+            Vector3 camF = playerMainCam.forward;
+            Vector3 camR = playerMainCam.right;
+            camF.y = 0;
+            camR.y = 0;
+            camF.Normalize();
+            camR.Normalize();
+
             moveInputs = new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical"));
+            moveInputs = moveInputs.z * camF + moveInputs.x * camR;
+
             moveInputs = Vector3.ClampMagnitude(moveInputs, 1);
 
             if (charVelocity.magnitude > 0.01f && moveInputs != Vector3.zero)
@@ -148,57 +183,47 @@ public class PlayerCharacter : MonoBehaviour
             isSlope = (Vector3.Angle(Vector3.up, hitNormal) <= charController.slopeLimit);
 
 
-            if (grounded && Input.GetKeyDown(KeyCode.Space))
+            if (grounded && Input.GetButtonDown("Jump"))
             {
                 charVelocity.y += Mathf.Sqrt(jumpHeight * -3f * gravityScale);
             }
-
-            //JumpBoost from a ghostPoint
-
-
             //Gravity and Falling Velocity
             charVelocity.y += gravityScale * Time.deltaTime;
 
-            //Add velocity from a raycast that's deducting the slope speed. try looking at okoa's script
+
             Vector3 movement = moveInputs * charSpeed;
             movement.y = charVelocity.y;
 
-            // if (!isSlope && grounded)
-            // {
-            //     movement.x += (1f - hitNormal.y) * hitNormal.x * (-gravityScale - slideFriction);
-            //     movement.z += (1f - hitNormal.y) * hitNormal.z * (-gravityScale - slideFriction);
-            // }
+            if (!isSlope && grounded)
+            {
+                movement.x += (1f - hitNormal.y) * hitNormal.x * (-gravityScale - slideFriction);
+                movement.z += (1f - hitNormal.y) * hitNormal.z * (-gravityScale - slideFriction);
+            }
             if (grounded && charVelocity.y < 0)
             {
                 charVelocity.y = -3f;
             }
             charController.Move(movement * Time.deltaTime);
         }
-
-
-
-
     }
     #endregion
 
 
     public void CommandSystem()
     {
-        if (Input.GetMouseButtonDown(0) && !commandMode)
+        if (Input.GetButtonDown("CommandButton") && !commandMode)
         {
             commandMode = true;
-            StartCoroutine(WaitForEnemies());
+            StartCoroutine(GetTargetsFirst());
         }
-
-        if (Input.GetMouseButtonDown(1) || currentSP == 0 || !commandMode)
+        if (Input.GetButtonUp("CommandButton") || currentSP <= 0 || !commandMode)
         {
             commandMode = false;
             commandObj.SetActive(false);
             Time.timeScale = 1f;
             //Turn this into a delegate
-            StopCoroutine(WaitForEnemies());
+            StopCoroutine(GetTargetsFirst());
         }
-
         bool isComRangeCreated = false;
 
         if (commandMode == true && !isComRangeCreated)
@@ -206,18 +231,27 @@ public class PlayerCharacter : MonoBehaviour
             isComRangeCreated = true;
             commandObj.SetActive(true);
         }
+
+        if (Input.GetButtonDown("ConfirmButton") && commandMode && commandObj.GetComponent<CommandRange>().selectedObj)
+        {
+            commandObj.GetComponent<CommandRange>().ConfirmTarget();
+            commandObj.SetActive(false);
+            commandMode = false;
+        }
     }
 
-    IEnumerator WaitForEnemies()
+    //A Timer to get all objects first before selecting objects
+    IEnumerator GetTargetsFirst()
     {
         yield return new WaitForSeconds(0.1f);
         Time.timeScale = 0f;
     }
 
+    //JumpBoost from a ghostPoint
     IEnumerator WaitForTeleportUpdate()
     {
-        yield return new WaitForSeconds(0.01f);
-        charVelocity.y = 30f;
+        yield return new WaitForSeconds(0.1f);
+        charVelocity.y = 25f;
         settings.hasTeleport = false;
 
     }

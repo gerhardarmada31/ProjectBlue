@@ -19,7 +19,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &291519580540292507
 Transform:
   m_ObjectHideFlags: 0
@@ -110,7 +110,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   targetObj: []
   myText: {fileID: 0}
-  selectedEnemyObj: {fileID: 0}
+  selectedObj: {fileID: 0}
   selectedTarget: 0
   myPlayer: {fileID: 0}
 --- !u!1 &582968714613956197
@@ -211,7 +211,7 @@ CharacterController:
   serializedVersion: 2
   m_Height: 2
   m_Radius: 0.5
-  m_SlopeLimit: 50
+  m_SlopeLimit: 40
   m_StepOffset: 0.3
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
@@ -230,14 +230,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   commandMode: 0
   settings: {fileID: 11400000, guid: e779ac30b0ec2be4faaa63ac56480f06, type: 2}
+  playerMainCam: {fileID: 0}
   currentHP: 3
   maxHP: 3
   attackPoint: 1
   maxSP: 4
-  currentSP: 0
+  currentSP: 4
   spRate: 0
   charSpeed: 8
-  slideFriction: 50
+  slideFriction: 30
   gravityScale: -70
   jumpHeight: 3.5
   castOffset: 0

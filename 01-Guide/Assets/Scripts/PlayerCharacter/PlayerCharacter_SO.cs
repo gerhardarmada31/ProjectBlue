@@ -7,7 +7,7 @@ public class PlayerCharacter_SO : ScriptableObject
 {
     public int hp;
     public int maxHp;
-    public int attackPoint;
+    public int totalDmg;
     public Vector3 playerPosition;
     public bool hasTeleport = false;
     //public float playerUpBoost;

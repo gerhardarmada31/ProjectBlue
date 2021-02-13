@@ -35,7 +35,6 @@ public class GhostPoint : MonoBehaviour, ITakePosition
         }
     }
 
-
     private void OnDisable()
     {
         TargetEventSystem.current.onConfirmTargetSelect -= OnTeleportTarget;

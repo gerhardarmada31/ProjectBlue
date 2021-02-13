@@ -7,7 +7,7 @@ public class CommandRange : MonoBehaviour
 {
     public List<GameObject> targetObj = new List<GameObject>();
     public Text myText;
-    public GameObject selectedEnemyObj;
+    public GameObject selectedObj;
     public int selectedTarget;
 
     //Probably create scriptable object to pass through values
@@ -47,7 +47,7 @@ public class CommandRange : MonoBehaviour
 
         if (selectedTarget < targetObj.Count && targetObj[selectedTarget] != null)
         {
-            selectedEnemyObj = targetObj[selectedTarget];
+            selectedObj = targetObj[selectedTarget];
             myText.text = targetObj[selectedTarget].gameObject.name.ToString();
         }
     }
@@ -65,30 +65,36 @@ public class CommandRange : MonoBehaviour
                 targetObj.Add(other.transform.gameObject);
             }
 
-            Debug.Log(selectedEnemyObj);
+            Debug.Log(selectedObj);
+        }
+        else
+        {
+            myText.text = "None";
         }
     }
     private void OnDisable()
     {
         targetObj.Clear();
-        selectedEnemyObj = null;
-    }
-
-
-
-    public void SendDamage()
-    {
-        //Send Events to playercharacter to deduct sp at the same time send event to deduct enemies health.
-        if (selectedEnemyObj != null)
-        {
-            myPlayer.CurrentSP -= 1;
-         //   selectedEnemyObj.GetComponent<EnemyStatus>().TakeDamage(myPlayer.AttackPoint);
-            myPlayer.commandMode = false;
-        }
+        selectedObj = null;
+        ClearingTarget();
     }
 
     public void ConfirmTarget()
     {
-        TargetEventSystem.current.ConfirmTargetSelect(selectedEnemyObj);
+        if (myPlayer.commandMode && selectedObj != null)
+        {
+            myPlayer.commandMode = false;
+            TargetEventSystem.current.ConfirmTargetSelect(selectedObj);
+
+            //total SPcost
+            myPlayer.CurrentSP -= 1 + myPlayer.StackSP;
+        }
+
+    }
+
+    public void ClearingTarget()
+    {
+        targetObj.Clear();
+        selectedObj = null;
     }
 }
